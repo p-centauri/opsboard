@@ -23,7 +23,7 @@ from sqlalchemy import (
     func,
 )
 from sqlalchemy.dialects.postgresql import JSONB
-from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 Money = Numeric(12, 2)
 
@@ -40,6 +40,10 @@ class OrderStatus(StrEnum):
     SHIPPED = "shipped"
     DELIVERED = "delivered"
     CANCELLED = "cancelled"
+
+
+# Orders that count as sales (revenue, order counts): drafts aren't sales yet, cancelled never.
+BOOKED_STATUSES = (OrderStatus.CONFIRMED, OrderStatus.SHIPPED, OrderStatus.DELIVERED)
 
 
 def _in_check(column: str, enum: type[StrEnum]) -> str:
@@ -118,6 +122,10 @@ class Product(Base):
     stock_qty: Mapped[int] = mapped_column(Integer, nullable=False)
     low_stock_threshold: Mapped[int] = mapped_column(Integer, nullable=False, server_default="10")
 
+    @property
+    def is_low_stock(self) -> bool:
+        return self.stock_qty <= self.low_stock_threshold
+
 
 class Order(Base):
     __tablename__ = "orders"
@@ -147,6 +155,11 @@ class Order(Base):
     # Optimistic locking: every update must match and increment this.
     version: Mapped[int] = mapped_column(Integer, nullable=False, server_default="1")
 
+    customer: Mapped[Customer] = relationship(lazy="raise")
+    items: Mapped[list["OrderItem"]] = relationship(
+        lazy="raise", order_by="OrderItem.id", cascade="all, delete-orphan"
+    )
+
 
 class OrderItem(Base):
     __tablename__ = "order_items"
@@ -166,6 +179,8 @@ class OrderItem(Base):
     # Copied from the product when the order is placed; later price changes don't rewrite history.
     unit_price: Mapped[Decimal] = mapped_column(Money, nullable=False)
 
+    product: Mapped[Product] = relationship(lazy="raise")
+
 
 class AuditLog(Base):
     __tablename__ = "audit_log"
@@ -180,4 +195,35 @@ class AuditLog(Base):
     entity_id: Mapped[int] = mapped_column(BigInteger, nullable=False)
     action: Mapped[str] = mapped_column(String(32), nullable=False)
     diff: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
+    created_at: Mapped[datetime] = _created_at()
+
+
+class UserSession(Base):
+    """Server-side login session. The cookie holds a random token; only its SHA-256 is stored,
+    so a database leak doesn't expose usable sessions."""
+
+    __tablename__ = "user_sessions"
+    __table_args__ = (Index("ix_user_sessions_expires_at", "expires_at"),)
+
+    id: Mapped[int] = _id()
+    token_hash: Mapped[str] = mapped_column(String(64), unique=True, nullable=False)
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    created_at: Mapped[datetime] = _created_at()
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+
+class LoginFailure(Base):
+    """Failed login attempts, for rate limiting that works across API replicas."""
+
+    __tablename__ = "login_failures"
+    __table_args__ = (
+        Index("ix_login_failures_email_ip_created_at", "email", "ip", "created_at"),
+        Index("ix_login_failures_ip_created_at", "ip", "created_at"),
+    )
+
+    id: Mapped[int] = _id()
+    email: Mapped[str] = mapped_column(String(254), nullable=False)
+    ip: Mapped[str] = mapped_column(String(45), nullable=False)
     created_at: Mapped[datetime] = _created_at()

@@ -14,6 +14,10 @@ class Settings(BaseSettings):
     db_connect_timeout_s: int = 5
     db_statement_timeout_ms: int = 10_000
 
+    session_ttl_hours: int = 12
+    # Secure by default; only plain-http local dev turns it off (see .env.example).
+    cookie_secure: bool = True
+
 
 @lru_cache
 def get_settings() -> Settings:

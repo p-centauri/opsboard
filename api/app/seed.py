@@ -31,7 +31,16 @@ logger = logging.getLogger(__name__)
 
 HISTORY_DAYS = 730
 BATCH_SIZE = 10_000
-SEEDED_TABLES = ("order_items", "orders", "products", "customers", "audit_log", "users")
+SEEDED_TABLES = (
+    "order_items",
+    "orders",
+    "products",
+    "customers",
+    "audit_log",
+    "user_sessions",
+    "login_failures",
+    "users",
+)
 
 COUNTRIES = ("US", "GB", "DE", "CA", "AU", "NL", "FR", "AE", "UZ", "KZ")
 COUNTRY_WEIGHTS = (30, 14, 12, 9, 7, 6, 6, 6, 5, 5)

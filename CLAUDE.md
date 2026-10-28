@@ -7,6 +7,9 @@ Next.js web (M3) and Flutter (later) follow.
 
 ## Layout
 - `api/app/models.py`: schema; all integrity rules are DB constraints
+- `api/app/routers/`: HTTP layer; `services/`: business rules; `schemas/`: Pydantic I/O
+- `api/app/deps.py`: `Db`, `CurrentUser`, `Viewer`/`Manager`/`Admin` dependencies
+- `api/app/errors.py`: raise `ApiError(status, code, message, fields)`; never return ad-hoc errors
 - `api/app/seed.py`: deterministic demo data (pure generators + COPY writer)
 - `api/app/db.py`, `config.py`: engine with connect/statement timeouts; env settings (required, no defaults)
 - `api/alembic/versions/`: one migration per schema change; never edit an applied one
@@ -24,4 +27,10 @@ Next.js web (M3) and Flutter (later) follow.
 - Constraint names come from the naming convention in `Base.metadata`; tests match on them.
 - Money is `Numeric(12,2)` / `Decimal`, never float. Times are timezone-aware UTC.
 - No raw f-string SQL: use SQLAlchemy Core or `psycopg.sql.Identifier`.
+- New route: add it to `ENDPOINTS` in `tests/test_permissions.py`; a guard test fails otherwise.
+- Writes: lock the row, check `version` where the entity has one, `audit.record(...)`, then
+  the router calls `db.commit()`.
+- Tests: `client` gives one session per request on a savepoint (failed requests roll back);
+  `login("manager")` signs in. Use `clean_db` only for tests that need real commits (races).
+- SQLAlchemy 2.1 typing: `Select[A, B]`, not `Select[tuple[A, B]]`.
 - Pin exact dependency versions in `api/requirements*.txt`; verify a package exists before adding it.

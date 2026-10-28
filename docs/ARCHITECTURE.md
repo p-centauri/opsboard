@@ -26,10 +26,28 @@ Indexes support the planned queries: registry filters (`status, created_at`),
 (`customer_id, created_at`), date ranges (`created_at`), top products (`order_items.product_id`),
 and customer search (trigram GIN on `customers.name`).
 
-## Request flow (from M2)
-HTTP → FastAPI route (Pydantic input schema) → auth/role check per object → SQLAlchemy
-in a single transaction → Pydantic output schema. Every error uses the same shape:
-`{"error": {"code", "message", "fields?"}}`.
+## API layers
+```
+routers/   HTTP only: params, status codes, commit
+services/  business rules: orders (transitions, stock, locking), analytics, auth, export
+schemas/   Pydantic I/O: inputs forbid unknown fields; outputs are explicit models
+deps.py    request session (rolled back unless committed), current user, role gates
+errors.py  ApiError + handlers → {"error": {code, message, fields?}}
+audit.py   audit rows written inside the caller's transaction
+```
+Request: route → `Viewer`/`Manager`/`Admin` dependency (session cookie → user → role rank)
+→ input schema → service → `db.commit()` → output schema. Any exception before the commit
+rolls back the whole request.
+
+Authorization: single-tenant, so object-level access is role-level. The role matrix test
+covers every route, and a guard test fails if a new route is missing from it.
+
+## Concurrency
+- Order writes lock the order row (`SELECT … FOR UPDATE`) and compare `version`, giving 409
+  `stale_version` on a mismatch.
+- Confirm runs `UPDATE products SET stock = stock - q WHERE id = ? AND stock >= q` in
+  product-id order. The conditional update can't oversell, and the fixed order avoids deadlocks.
+- Login failures and sessions live in Postgres, so limits and logout hold across replicas.
 
 ## Seed pipeline
 Pure generators (`random.Random(seed)` + seeded Faker) produce typed rows. A writer

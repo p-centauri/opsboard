@@ -32,7 +32,7 @@ Explicit Pydantic input/output schemas on every endpoint (no ORM objects leaked,
 
 | Method & path | Role | Notes |
 |---|---|---|
-| `POST /auth/login`, `POST /auth/logout`, `GET /auth/me` | any | httpOnly, Secure, SameSite=Lax cookie session (JWT, short TTL); rate-limited login |
+| `POST /auth/login`, `POST /auth/logout`, `GET /auth/me` | any | httpOnly, Secure, SameSite=Lax cookie; server-side session in Postgres (see DECISIONS D8); rate-limited login |
 | `GET /orders` | viewer+ | filters: status[], date_from/to, customer_id, min/max total, q; sort whitelist; page+page_size (max 100) |
 | `GET /orders/{id}` | viewer+ | 404 for missing |
 | `POST /orders`, `PATCH /orders/{id}` | manager+ | validates items, recomputes total, requires `version` on PATCH |
@@ -104,7 +104,7 @@ opsboard/
 |---|---|---|
 | Orders/inventory domain | Most common Upwork internal-tool ask; maps to your registry/form/dashboard work | Niche gov-style domain (less relatable) |
 | Monorepo, 2 apps | One repo link for clients; Compose runs everything | Separate repos |
-| Cookie session (httpOnly JWT) | Safe against XSS token theft; simple for a web client | localStorage tokens |
+| Cookie + server-side session | Revocable, replica-safe, safe against XSS token theft (D8) | JWT; localStorage tokens |
 | Offset pagination | Users need "page N of M" in registries; fine at 100k with indexes | Keyset (add only if measured slow) |
 | No Redis/queues/caching | No requirement needs them yet (YAGNI); measure first | Pre-emptive caching |
 | Optimistic locking | Real multi-user edit safety; shows seniority | Last-write-wins |
