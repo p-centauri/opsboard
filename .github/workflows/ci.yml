@@ -26,7 +26,7 @@ jobs:
         run: make test
       - name: Seed demo data
         run: make seed
-      - name: Browser and accessibility tests
+      - name: Browser and accessibility tests (production build)
         run: make e2e
       - name: Upload Playwright report
         if: failure()
@@ -34,8 +34,6 @@ jobs:
         with:
           name: playwright-report
           path: web/playwright-report
-      - name: Production images build
-        run: docker compose -f docker-compose.yml build
       - name: Stop containers
         if: always()
         run: docker compose --profile e2e down -v

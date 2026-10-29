@@ -18,7 +18,8 @@ services:
       # (inside the container), so its native binaries are Linux ones.
       - ./web:/app
 
-  # Browser tests: `make e2e` (needs a seeded database). Runs against the full stack via edge.
+  # Browser tests: `make e2e` (needs a seeded database). Runs against the production build via
+  # edge, so no page compiles on first visit and the tests see exactly what ships.
   e2e:
     image: mcr.microsoft.com/playwright:v1.64.1-noble
     profiles: ["e2e"]
@@ -29,5 +30,3 @@ services:
       BASE_URL: http://edge
       DEMO_PASSWORD: ${DEMO_PASSWORD}
     command: npx playwright test
-    depends_on:
-      - edge

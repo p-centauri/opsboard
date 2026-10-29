@@ -4,8 +4,14 @@ An operations dashboard for orders, inventory and analytics: the kind of interna
 businesses run on. It's built to production standards and seeded with 100k realistic orders,
 so performance is measured on real data volume, not a toy dataset.
 
-> **Status:** milestones 1–3 of 4 are done: the backend, the REST API and the web app.
-> Deployment is next. See [docs/PROGRESS.md](docs/PROGRESS.md).
+> **Status:** built and tested. The deploy kit is ready, and the live demo goes up next.
+> See [docs/PROGRESS.md](docs/PROGRESS.md).
+
+![Dashboard](docs/screenshots/dashboard-light.png)
+
+| Orders | Draft editor | On a phone |
+|---|---|---|
+| ![Orders](docs/screenshots/orders-light.png) | ![Order editor](docs/screenshots/order-editor-light.png) | ![Mobile](docs/screenshots/mobile-light.png) |
 
 ## Stack
 **Web:** Next.js 16 (App Router) · React 19 · TypeScript · Tailwind CSS 4 · TanStack Query ·
@@ -21,7 +27,7 @@ make setup     # create .env, build images, install web deps
 make seed      # apply migrations, load 100k demo orders (~10 s)
 make dev       # everything with hot reload → http://localhost:3000 (API docs: :8000/docs)
 make test      # API tests on real Postgres + web component tests
-make e2e       # browser + accessibility tests on the full stack
+make e2e       # browser + accessibility tests on the production build
 make lint      # ruff + mypy strict, eslint + tsc
 ```
 
@@ -34,6 +40,10 @@ make lint      # ruff + mypy strict, eslint + tsc
 | `seed` / `reseed` | Load demo data / replace all data with fresh demo data |
 | `test`, `e2e`, `lint`, `format` | Unit/integration tests / browser tests / lint + type check / auto-format |
 | `gen-api` | Regenerate the web app's API types from the running API |
+| `screenshots` | Portfolio screenshots of the prod stack → `docs/screenshots/` (after `make run`) |
+
+**Deploying:** one VPS, the same Compose stack, automatic HTTPS. Step by step in
+[docs/DEPLOY.md](docs/DEPLOY.md).
 | `clean` | Stop and **delete the database volume** |
 
 Demo users: `viewer@demo.local` and `manager@demo.local` (password `SEED_DEMO_PASSWORD`),
@@ -81,6 +91,7 @@ api/            FastAPI service
   tests/        pytest against real Postgres
 docs/           plan, architecture, decisions, progress
 docker-compose.yml (prod-like), docker-compose.override.yml (dev), Caddyfile (edge proxy)
+deploy/         server Compose override, .env template, deploy and nightly-reset scripts
 Makefile, make.ps1, .github/workflows/ci.yml
 ```
 

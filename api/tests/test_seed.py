@@ -87,6 +87,16 @@ def test_customer_emails_use_reserved_example_domain() -> None:
     assert all(row.email.endswith(".example") for row in rows)
 
 
+def test_product_names_are_unique() -> None:
+    products = generate_products(random.Random(5), SeedConfig(10, 1_000, 1, seed=5, end=END))
+    assert len({p.name for p in products}) == 1_000
+
+
+def test_too_many_products_for_unique_names_fails_loudly() -> None:
+    with pytest.raises(ValueError, match="unique names"):
+        generate_products(random.Random(5), SeedConfig(10, 100_000, 1, seed=5, end=END))
+
+
 def test_products_include_low_stock_items() -> None:
     products = generate_products(random.Random(3), SeedConfig(10, 500, 1, seed=3, end=END))
     assert any(p.stock_qty <= p.low_stock_threshold for p in products)

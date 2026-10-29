@@ -34,7 +34,10 @@ export function SearchPicker<T>({ label, placeholder, endpoint, render, itemKey,
     queryFn: ({ signal }) => api<{ items: T[] }>(`${endpoint}${queryString({ q, page_size: 8 })}`, { signal }),
     enabled: q.length > 0,
   });
-  const items = (results.data?.items ?? []).filter((item) => !exclude?.has(itemKey(item)));
+  // Only show results for exactly what's in the box. While typing (before the debounce settles)
+  // older results would otherwise stay clickable and add the wrong item.
+  const current = text.trim() === q;
+  const items = current ? (results.data?.items ?? []).filter((item) => !exclude?.has(itemKey(item))) : [];
 
   return (
     <div>
@@ -52,13 +55,13 @@ export function SearchPicker<T>({ label, placeholder, endpoint, render, itemKey,
         )}
       </Field>
       <div id={resultsId} aria-live="polite" className="mt-2">
-        {q && results.isFetching && !results.data && (
+        {text.trim() && (!current || (results.isFetching && !results.data)) && (
           <p className="flex items-center gap-2 text-sm text-muted">
             <Spinner /> Searching…
           </p>
         )}
-        {q && results.isError && <p className="text-sm text-danger">Search failed. Try again.</p>}
-        {q && results.data && items.length === 0 && <p className="text-sm text-muted">No matches for “{q}”.</p>}
+        {current && q && results.isError && <p className="text-sm text-danger">Search failed. Try again.</p>}
+        {current && q && results.data && items.length === 0 && <p className="text-sm text-muted">No matches for “{q}”.</p>}
         {items.length > 0 && (
           <ul className="divide-y divide-line overflow-hidden rounded-md border border-line" aria-label={`${label} results`}>
             {items.map((item) => (

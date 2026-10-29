@@ -1,0 +1,30 @@
+# Server overrides for a single VPS. Use with the base file only (not the dev override):
+#   docker compose -f docker-compose.yml -f deploy/docker-compose.server.yml up -d
+# deploy/deploy.sh does this for you.
+services:
+  db:
+    restart: unless-stopped
+    ports: !reset []      # never expose Postgres on a server
+
+  api:
+    restart: unless-stopped
+    ports: !reset []      # reachable only through edge -> web (D13)
+
+  web:
+    restart: unless-stopped
+
+  edge:
+    restart: unless-stopped
+    environment:
+      SITE_ADDRESS: ${SITE_ADDRESS:?Set SITE_ADDRESS in .env, e.g. demo.example.com}
+    ports: !override
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"     # HTTP/3
+    volumes:
+      - caddy_data:/data  # certificates; keep across redeploys to avoid ACME rate limits
+      - caddy_config:/config
+
+volumes:
+  caddy_data:
+  caddy_config:

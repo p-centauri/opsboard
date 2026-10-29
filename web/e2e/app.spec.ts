@@ -5,7 +5,10 @@ import { expectAccessible, signInAs } from "./helpers";
 test("login page is accessible and rejects a wrong password", async ({ page }) => {
   await page.goto("/login");
   await expectAccessible(page);
-  await page.getByLabel("Email").fill("manager@demo.local");
+  // A fresh, non-existent email each run: failed sign-ins count toward the per email+IP rate
+  // limit, and using a demo account here would lock it for the tests that follow. Unknown
+  // emails and wrong passwords get the identical response, so this covers both.
+  await page.getByLabel("Email").fill(`nobody-${Date.now()}@test.local`);
   await page.getByLabel("Password").fill("wrong-password");
   await page.getByRole("button", { name: "Sign in" }).click();
   // Scoped by text: Next's route announcer is also role="alert".

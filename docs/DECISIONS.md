@@ -89,3 +89,15 @@ typed hooks (`lib/queries.ts`). Previous results stay visible while the next pag
 Retries happen only on network/5xx errors, and any 401 sends the user to `/login?next=…`
 (validated against open redirects). Filters, sort and page live in the query string, so views
 are shareable and the back button works.
+
+### D18: Host the demo on one VPS with the same Compose stack (2026-10-29)
+It's the exact configuration the tests run against, it keeps D13 (Caddy is the only public
+entry point, with automatic HTTPS), and it costs one small server. Rejected for now: split
+managed platforms (e.g. Vercel + Render + Neon), because the web/API/DB split across
+providers would need D13 re-engineered, free tiers have cold starts, and there would be three
+accounts to manage. A first deploy was rehearsed locally over HTTPS with the server config.
+
+### D19: Seeded product names are unique (2026-10-29)
+A portfolio screenshot showed two different SKUs both named "Eco Pallet Jack", because 300
+products were drawn from 192 name combinations. Names now include a model suffix and are
+drawn without repeats; asking for more products than there are unique names is an error.

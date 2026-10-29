@@ -9,7 +9,7 @@ WEB := $(COMPOSE) run --rm --no-deps web
 
 .DEFAULT_GOAL := help
 .PHONY: help setup web-install dev run stop logs migrate seed reseed test test-api test-web \
-	e2e lint lint-api lint-web format gen-api clean
+	e2e screenshots lint lint-api lint-web format gen-api clean
 
 help: ## List tasks
 	@grep -E '^[a-z-]+:.*## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*## "}; {printf "  %-12s %s\n", $$1, $$2}'
@@ -53,8 +53,13 @@ test-api: .env ## API tests against a real Postgres
 test-web: .env ## Web component tests (Vitest)
 	$(WEB) npm test
 
-e2e: .env ## Browser + accessibility tests on the full stack (needs `make seed` once)
-	$(COMPOSE) --profile e2e run --rm e2e
+e2e: .env ## Browser + accessibility tests on the production build (needs `make seed` once)
+	$(PROD) up -d --build --wait
+	$(COMPOSE) --profile e2e run --rm --no-deps e2e
+	@echo "The production stack is still running; \`make dev\` switches back to dev."
+
+screenshots: .env ## Portfolio screenshots of the prod stack → docs/screenshots (run `make run` first)
+	$(COMPOSE) --profile e2e run --rm --no-deps -v "$(CURDIR)/docs/screenshots:/out" e2e node scripts/screenshots.mjs
 
 lint: lint-api lint-web ## Lint + type check everything
 

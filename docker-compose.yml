@@ -57,6 +57,11 @@ services:
     depends_on:
       api:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/login').then(r => process.exit(r.ok ? 0 : 1), () => process.exit(1))"]
+      interval: 3s
+      timeout: 3s
+      retries: 40
 
   edge:
     image: caddy:2.10.2-alpine
@@ -65,7 +70,8 @@ services:
     ports:
       - "127.0.0.1:${WEB_PORT:-3000}:80"
     depends_on:
-      - web
+      web:
+        condition: service_healthy
 
 volumes:
   pgdata:

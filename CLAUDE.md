@@ -16,11 +16,13 @@ PostgreSQL behind a Caddy edge. Flutter client later.
 - `api/tests/`: pytest on real Postgres (`TEST_DATABASE_URL`, recreated per session)
 - `web/src/app/(app)/`: signed-in pages; `web/src/components/ui/`: design-system components
 - `web/src/lib/queries.ts`: all query keys/hooks; `api.ts`: fetch + ApiError; `api-schema.ts`: generated
-- `web/e2e/`: Playwright + axe; `Caddyfile`: edge proxy (owns X-Forwarded-For, D13)
+- `web/e2e/`: Playwright + axe; `web/scripts/screenshots.mjs`: portfolio images
+- `Caddyfile`: edge proxy (owns X-Forwarded-For, D13; HTTPS when SITE_ADDRESS is set)
+- `deploy/`: server override, prod .env template, deploy/reset scripts (docs/DEPLOY.md)
 - `docs/`: PLAN-summary, PLAN-detailed, ARCHITECTURE, DECISIONS, PROGRESS
 
 ## Commands (Docker only; Windows: `./make.ps1 <task>`)
-`make setup | dev | run | seed | reseed | migrate | test | e2e | lint | format | gen-api | stop | clean`
+`make setup | dev | run | seed | reseed | migrate | test | e2e | screenshots | lint | format | gen-api | stop | clean`
 Web deps install inside the container (`make web-install`); never `npm install` on the host.
 
 ## Conventions

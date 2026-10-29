@@ -118,3 +118,41 @@ describe("ErrorState", () => {
     expect(screen.queryByRole("button", { name: "Try again" })).not.toBeInTheDocument();
   });
 });
+
+describe("SearchPicker", () => {
+  it("never shows results from a previous query while a new one is typed", async () => {
+    const { QueryClient, QueryClientProvider } = await import("@tanstack/react-query");
+    const { SearchPicker } = await import("./search-picker");
+    const fetchMock = vi.fn(async (url: string) => {
+      const q = new URL(url, "http://x").searchParams.get("q");
+      return new Response(JSON.stringify({ items: [{ id: q === "chair" ? 2 : 1, name: q === "chair" ? "Office Chair" : "Barcode Scanner" }] }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    const onPick = vi.fn();
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <SearchPicker<{ id: number; name: string }>
+          label="Add a product"
+          placeholder=""
+          endpoint="/products"
+          itemKey={(p) => p.id}
+          render={(p) => p.name}
+          onPick={onPick}
+        />
+      </QueryClientProvider>,
+    );
+    const box = screen.getByRole("searchbox", { name: "Add a product" });
+    await userEvent.type(box, "scanner");
+    await userEvent.click(await screen.findByRole("button", { name: "Barcode Scanner" }));
+    expect(onPick).toHaveBeenLastCalledWith({ id: 1, name: "Barcode Scanner" });
+
+    await userEvent.type(box, "chair");
+    // Before the debounce settles, the old "scanner" results must not be clickable.
+    expect(screen.queryByRole("button", { name: "Barcode Scanner" })).not.toBeInTheDocument();
+    await userEvent.click(await screen.findByRole("button", { name: "Office Chair" }));
+    expect(onPick).toHaveBeenLastCalledWith({ id: 2, name: "Office Chair" });
+  });
+});

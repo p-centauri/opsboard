@@ -1,6 +1,6 @@
 # Progress
 
-_Last updated: 2026-10-28_
+_Last updated: 2026-10-29_
 
 ## Done: Milestone 1 (foundation)
 Schema with DB constraints, migration 0001, deterministic 100k-order seed, `/health`, Docker
@@ -58,13 +58,34 @@ Everything else is under 66 ms.
 - Checked by hand in the browser: login validation, dashboard (dark, and light at 375px), order
   create → confirm (stock −3) → cancel (stock restored), dialog focus/Escape behaviour
 
-## Next: Milestone 4 (ship)
-1. Pick hosting (check current pricing). Keep D13: only the edge is public, and it
-   overwrites `X-Forwarded-For`
-2. Production secrets, `COOKIE_SECURE=true`, HTTPS, demo DB reset schedule
-3. Push to GitHub (needs the username), make CI green, add a CI badge
-4. Screenshots (dashboard, orders, editor, phone) and the Upwork portfolio entry
-5. Optional performance pass on order search `q`
+## Milestone 4 (ship): in progress
+Done:
+- Deploy kit (`deploy/`): server Compose override (only 80/443 public, restart policies,
+  Caddy certificate volumes), production `.env` template, `deploy.sh` (refuses
+  placeholders; build, migrate, start, optional seed), `reset-demo.sh` for nightly cron, and
+  docs/DEPLOY.md
+- Rehearsed a first deploy locally with the server config over real HTTPS (Caddy local CA):
+  HTTP→HTTPS 308, HSTS, `Server` header stripped, `Secure` cookie, spoofed `X-Forwarded-For`
+  ignored, migrate + seed + reset working
+- Portfolio screenshots via `make screenshots` (6 × 1600×1200, from the production build)
+- Upwork entry: docs/UPWORK-PORTFOLIO.md (title, role, description, skills, captions; every
+  claim mapped to evidence)
+- Found while taking screenshots, and fixed: search results from the previous query stayed
+  clickable while typing (regression test confirmed failing before the fix); duplicate seeded
+  product names (D19)
+
+- e2e now runs against the production build, behind a web healthcheck: no on-demand
+  compiles (dev compiles took up to 5.4 s against 5 s assertion timeouts), and it tests
+  what ships. A flake was traced to the tests themselves: the wrong-password test used
+  `manager@demo.local`, so repeated runs tripped the rate limit (working as designed) and
+  locked the account for later tests. It now uses a unique email; 3 consecutive runs passed
+  10/10.
+
+Waiting on the owner:
+1. A VPS (2 GB RAM) and a hostname pointing at it, then follow docs/DEPLOY.md
+2. GitHub username, so the repo can be pushed and CI can run for the first time
+3. Fill in the live-demo and GitHub links in docs/UPWORK-PORTFOLIO.md, then add the entry on
+   Upwork
 
 ## Known issues / notes
 - `make.ps1` is untested: PowerShell isn't installed on the dev Mac. Verify on Windows.
@@ -75,6 +96,8 @@ Everything else is under 66 ms.
 - Product `PATCH stock_qty` sets an absolute value. The row is locked, but a manager working
   from a stale screen can overwrite a reservation made in between. Consider a
   stock-adjustment endpoint (+/- delta) if the UI needs it.
+- More than 30 local `make e2e` runs within 15 minutes would trip the per-IP login cap
+  (one failed sign-in per run). CI starts with a fresh database each time.
 - Starlette warns that TestClient's `httpx` is deprecated in favour of `httpx2`. Harmless;
   revisit when upgrading.
 - Deployment must keep D13: api/web reachable only via a proxy that overwrites

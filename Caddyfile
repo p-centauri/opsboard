@@ -2,7 +2,15 @@
 # Caddy sets X-Forwarded-For from the TCP connection and does not trust a client-supplied
 # value (no trusted_proxies configured), so the API's per-IP login limit sees real client
 # addresses that can't be spoofed. Next.js passes the header on to the API unchanged.
-:80 {
+#
+# SITE_ADDRESS: unset locally (plain HTTP on :80 inside the container). On a server, set it
+# to the domain (e.g. demo.example.com) and Caddy obtains and renews HTTPS certificates.
+{$SITE_ADDRESS::80} {
 	encode zstd gzip
+	header {
+		# Ignored by browsers over plain HTTP, so harmless locally.
+		Strict-Transport-Security "max-age=31536000"
+		-Server
+	}
 	reverse_proxy web:3000
 }

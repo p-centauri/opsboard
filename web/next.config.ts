@@ -18,9 +18,6 @@ const securityHeaders = [
 const config: NextConfig = {
   output: "standalone",
   poweredByHeader: false,
-  // Dev server only: e2e tests reach the app as http://edge (the Caddy service), and Next
-  // blocks dev assets for hosts other than localhost by default. Ignored in production.
-  allowedDevOrigins: ["edge"],
   reactStrictMode: true,
   async rewrites() {
     return [{ source: "/api/:path*", destination: `${apiUrl}/:path*` }];

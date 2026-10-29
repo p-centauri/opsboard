@@ -77,6 +77,8 @@ PRODUCT_NOUNS = (
     "Air Compressor",
 )
 
+PRODUCT_MODELS = ("100", "200", "300", "Mini", "Lite", "Plus", "Pro", "Max")
+
 
 @dataclass(frozen=True)
 class SeedConfig:
@@ -148,9 +150,20 @@ def generate_customers(rng: random.Random, faker: Faker, cfg: SeedConfig) -> lis
 
 
 def generate_products(rng: random.Random, cfg: SeedConfig) -> list[ProductRow]:
+    """Products with unique names (duplicate names next to different SKUs look like a data bug)."""
+    combinations = len(PRODUCT_ADJECTIVES) * len(PRODUCT_NOUNS) * len(PRODUCT_MODELS)
+    if cfg.products > combinations:
+        raise ValueError(f"At most {combinations} products have unique names; got {cfg.products}")
     rows: list[ProductRow] = []
+    used: set[str] = set()
     for product_id in range(1, cfg.products + 1):
-        name = f"{rng.choice(PRODUCT_ADJECTIVES)} {rng.choice(PRODUCT_NOUNS)}"
+        name = ""
+        while not name or name in used:
+            name = (
+                f"{rng.choice(PRODUCT_ADJECTIVES)} {rng.choice(PRODUCT_NOUNS)} "
+                f"{rng.choice(PRODUCT_MODELS)}"
+            )
+        used.add(name)
         whole_price = round(min(max(rng.lognormvariate(3.6, 1.0), 2), 2_000))
         price = Decimal(whole_price) - Decimal("0.01")  # 1.99 .. 1999.99
         threshold = rng.choice((5, 10, 20, 25))
