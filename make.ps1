@@ -11,23 +11,33 @@ function Ensure-Env {
     if (-not (Test-Path .env)) { Copy-Item .env.example .env }
 }
 
-$api = @("docker", "compose", "run", "--rm", "api")
+$compose = @("docker", "compose")                           # dev (loads the override file)
+$prod = @("docker", "compose", "-f", "docker-compose.yml")  # production-like
+$api = $compose + @("run", "--rm", "api")
+$apiNoDeps = $compose + @("run", "--rm", "--no-deps", "api")
+$web = $compose + @("run", "--rm", "--no-deps", "web")
+$playwright = $compose + @("--profile", "e2e", "run", "--rm", "e2e")
 
 switch ($Task) {
-    "setup"   { Ensure-Env; Invoke-Checked @("docker", "compose", "build") }
-    "dev"     { Ensure-Env; Invoke-Checked @("docker", "compose", "up", "--build") }
-    "run"     { Ensure-Env; $env:API_TARGET = "prod"; Invoke-Checked @("docker", "compose", "up", "--build", "-d") }
-    "stop"    { Invoke-Checked @("docker", "compose", "down") }
-    "logs"    { Invoke-Checked @("docker", "compose", "logs", "-f") }
-    "migrate" { Ensure-Env; Invoke-Checked ($api + @("alembic", "upgrade", "head")) }
-    "seed"    { Ensure-Env; Invoke-Checked ($api + @("alembic", "upgrade", "head")); Invoke-Checked ($api + @("python", "-m", "app.seed")) }
-    "reseed"  { Ensure-Env; Invoke-Checked ($api + @("alembic", "upgrade", "head")); Invoke-Checked ($api + @("python", "-m", "app.seed", "--reset")) }
-    "test"    { Ensure-Env; Invoke-Checked ($api + @("pytest")) }
-    "lint"    { Ensure-Env; Invoke-Checked ($api + @("sh", "-c", "ruff check . && ruff format --check . && mypy app tests")) }
-    "format"  { Ensure-Env; Invoke-Checked ($api + @("sh", "-c", "ruff format . && ruff check --fix .")) }
-    "clean"   { Invoke-Checked @("docker", "compose", "down", "-v") }
+    "setup"       { Ensure-Env; Invoke-Checked ($compose + @("build")); Invoke-Checked ($web + @("npm", "ci", "--no-audit", "--no-fund")) }
+    "web-install" { Ensure-Env; Invoke-Checked ($web + @("npm", "ci", "--no-audit", "--no-fund")) }
+    "dev"         { Ensure-Env; Invoke-Checked ($compose + @("up", "--build")) }
+    "run"         { Ensure-Env; Invoke-Checked ($prod + @("up", "--build", "-d")) }
+    "stop"        { Invoke-Checked ($compose + @("down")) }
+    "logs"        { Invoke-Checked ($compose + @("logs", "-f")) }
+    "migrate"     { Ensure-Env; Invoke-Checked ($api + @("alembic", "upgrade", "head")) }
+    "seed"        { Ensure-Env; Invoke-Checked ($api + @("alembic", "upgrade", "head")); Invoke-Checked ($api + @("python", "-m", "app.seed")) }
+    "reseed"      { Ensure-Env; Invoke-Checked ($api + @("alembic", "upgrade", "head")); Invoke-Checked ($api + @("python", "-m", "app.seed", "--reset")) }
+    "test"        { Ensure-Env; Invoke-Checked ($api + @("pytest")); Invoke-Checked ($web + @("npm", "test")) }
+    "test-api"    { Ensure-Env; Invoke-Checked ($api + @("pytest")) }
+    "test-web"    { Ensure-Env; Invoke-Checked ($web + @("npm", "test")) }
+    "e2e"         { Ensure-Env; Invoke-Checked $playwright }
+    "lint"        { Ensure-Env; Invoke-Checked ($apiNoDeps + @("sh", "-c", "ruff check . && ruff format --check . && mypy app tests")); Invoke-Checked ($web + @("npm", "run", "lint")) }
+    "format"      { Ensure-Env; Invoke-Checked ($apiNoDeps + @("sh", "-c", "ruff format . && ruff check --fix .")) }
+    "gen-api"     { Ensure-Env; Invoke-Checked ($compose + @("run", "--rm", "web", "npm", "run", "gen:api")) }
+    "clean"       { Invoke-Checked ($compose + @("down", "-v")) }
     default {
-        Write-Host "Tasks: setup dev run stop logs migrate seed reseed test lint format clean"
+        Write-Host "Tasks: setup web-install dev run stop logs migrate seed reseed test test-api test-web e2e lint format gen-api clean"
         if ($Task -ne "help") { exit 1 }
     }
 }

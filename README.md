@@ -4,22 +4,25 @@ An operations dashboard for orders, inventory and analytics: the kind of interna
 businesses run on. It's built to production standards and seeded with 100k realistic orders,
 so performance is measured on real data volume, not a toy dataset.
 
-> **Status:** milestones 1–2 of 4 are done: the backend foundation and a complete REST API
-> with 242 tests. The web UI is next. See [docs/PROGRESS.md](docs/PROGRESS.md).
+> **Status:** milestones 1–3 of 4 are done: the backend, the REST API and the web app.
+> Deployment is next. See [docs/PROGRESS.md](docs/PROGRESS.md).
 
 ## Stack
-FastAPI · SQLAlchemy 2 · PostgreSQL 17 · Alembic · Docker Compose · GitHub Actions.
-Next.js web app in milestone 3.
+**Web:** Next.js 16 (App Router) · React 19 · TypeScript · Tailwind CSS 4 · TanStack Query ·
+React Hook Form + Zod · Recharts
+**API:** FastAPI · SQLAlchemy 2 · PostgreSQL 17 · Alembic
+**Ops:** Docker Compose · Caddy · GitHub Actions · Vitest · Playwright + axe
 
 ## Quick start
 Requires Docker. macOS/Linux use `make`; Windows uses `./make.ps1` with the same task names.
 
 ```bash
-make setup     # create .env from .env.example, build images
+make setup     # create .env, build images, install web deps
 make seed      # apply migrations, load 100k demo orders (~10 s)
-make dev       # db + api with auto-reload → http://localhost:8000/docs
-make test      # tests against a real Postgres
-make lint      # ruff + mypy (strict)
+make dev       # everything with hot reload → http://localhost:3000 (API docs: :8000/docs)
+make test      # API tests on real Postgres + web component tests
+make e2e       # browser + accessibility tests on the full stack
+make lint      # ruff + mypy strict, eslint + tsc
 ```
 
 | Task | What it does |
@@ -29,11 +32,28 @@ make lint      # ruff + mypy (strict)
 | `stop`, `logs` | Stop containers / follow logs |
 | `migrate` | Apply Alembic migrations |
 | `seed` / `reseed` | Load demo data / replace all data with fresh demo data |
-| `test`, `lint`, `format` | Tests / lint + type check / auto-format |
+| `test`, `e2e`, `lint`, `format` | Unit/integration tests / browser tests / lint + type check / auto-format |
+| `gen-api` | Regenerate the web app's API types from the running API |
 | `clean` | Stop and **delete the database volume** |
 
 Demo users: `viewer@demo.local` and `manager@demo.local` (password `SEED_DEMO_PASSWORD`),
-plus `admin@demo.local` (password `SEED_ADMIN_PASSWORD`). Both are set in `.env`.
+plus `admin@demo.local` (password `SEED_ADMIN_PASSWORD`). Both are set in `.env`. The login
+page has one-click buttons for the first two when `DEMO_PASSWORD` is set.
+
+## What's in the app
+- **Dashboard:** revenue, orders, average order value and cancellation rate, each compared
+  with the previous period; a revenue trend chart (with a table view); orders by status;
+  top products; a low-stock alert.
+- **Orders:** search, status and date filters kept in the URL; sortable, paginated table
+  (cards on phones); CSV export; draft editor with customer and product search;
+  confirm → ship → deliver, or cancel with confirmation; clear messages when stock runs out
+  or someone else edited the order first.
+- **Customers and products:** search, create and edit with field-level validation; customer
+  lifetime value; a low-stock filter.
+- **Admin:** change roles or deactivate users (they're signed out immediately); a browsable
+  audit log of every change.
+- **Roles:** viewers read, managers edit, admins manage people. The UI hides what you can't
+  do, and the API enforces it.
 
 ## API
 Interactive docs at `/docs` once running. All endpoints except `/health` and `/auth/login`
@@ -53,13 +73,15 @@ Errors always look like `{"error": {"code": "stale_version", "message": "...", "
 
 ## Layout
 ```
+web/            Next.js app: src/app (routes), src/components, src/lib, e2e/ (Playwright)
 api/            FastAPI service
   app/          models.py (schema), routers/ (HTTP), services/ (rules), schemas/ (I/O),
                 deps.py (session, auth, roles), errors.py, seed.py
   alembic/      migrations
   tests/        pytest against real Postgres
 docs/           plan, architecture, decisions, progress
-docker-compose.yml, Makefile, make.ps1, .github/workflows/ci.yml
+docker-compose.yml (prod-like), docker-compose.override.yml (dev), Caddyfile (edge proxy)
+Makefile, make.ps1, .github/workflows/ci.yml
 ```
 
 ## Design highlights
@@ -75,6 +97,11 @@ docker-compose.yml, Makefile, make.ps1, .github/workflows/ci.yml
   accounts, and every route covered by a role-permission test.
 - **Fast on real volume:** with 100k orders every endpoint has p95 < 200 ms, and a full CSV
   export of all orders streams in about 0.5 s.
+- **Accessible and responsive by test, not by claim:** axe (WCAG 2.2 AA) runs on every key
+  screen in the browser tests, and phone layouts are tested at 320px for no sideways
+  scrolling. Light and dark themes, keyboard support, and visible focus throughout.
+- **Rate limiting that can't be spoofed:** an edge proxy sets the client IP, and a test that
+  sent a forged `X-Forwarded-For` showed it was ignored.
 - **Race-free order numbers:** `ORD-0000123` is a generated column derived from the id.
 - **Deterministic, fast seed:** the same `--seed` always gives the same data. Rows are
   bulk-loaded with `COPY` in bounded batches, in a single transaction, so a failed seed

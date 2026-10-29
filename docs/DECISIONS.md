@@ -57,3 +57,35 @@ cancelled orders never were. The cancellation rate uses all orders.
 ### D12: Same-origin web app, no CORS (2026-10-28)
 In M3, Next.js will proxy `/api/*` to the API, so the session cookie is first-party and
 SameSite=Lax plus JSON-only bodies cover CSRF. The API therefore enables no CORS.
+
+### D13: Caddy edge proxy owns the client IP (2026-10-28)
+Measured: the Next.js rewrite proxy passed a client-supplied `X-Forwarded-For` through
+unchanged (so the rate limit could be bypassed with fake IPs), and without that header the API
+saw every user as the web container (so 30 failures from anyone would lock out everyone).
+Self-hosted Next can't read the socket address in rewrites, `proxy.ts` or route handlers. So
+Caddy (`edge`) is the only published entry point: it sets `X-Forwarded-For` from the TCP
+connection and discards client values. Next forwards that header, and the API trusts it.
+Verified: a spoofed header was ignored and the real connection IP was recorded.
+**Deployment must keep this invariant:** web and api reachable only through a proxy that
+overwrites `X-Forwarded-For`.
+
+### D14: API types generated from OpenAPI (2026-10-28)
+`make gen-api` writes `web/src/lib/api-schema.ts` from FastAPI's schema with
+`openapi-typescript`, so the frontend and backend can't silently drift apart. The generated
+file is committed, and regenerated whenever an API schema changes.
+
+### D15: TypeScript 5.9, not 7.0 (2026-10-28)
+npm `latest` is the 7.0 native port, but `openapi-typescript` declares `typescript ^5`, and
+Next's type-checking uses the TypeScript JS API. Revisit when both support 7.
+
+### D16: Dashboard ranges are complete UTC days ending yesterday (2026-10-28)
+Including today showed the partial day as a revenue cliff, and biased every period-over-period
+delta downward (seen in the first browser check). Revenue figures are whole dollars on tiles,
+exact elsewhere.
+
+### D17: Client data via TanStack Query; filters in the URL (2026-10-28)
+The UI is an authenticated internal tool, so pages are client components that fetch through
+typed hooks (`lib/queries.ts`). Previous results stay visible while the next page loads.
+Retries happen only on network/5xx errors, and any 401 sends the user to `/login?next=…`
+(validated against open redirects). Filters, sort and page live in the query string, so views
+are shareable and the back button works.

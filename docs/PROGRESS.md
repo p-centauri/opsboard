@@ -33,15 +33,38 @@ All endpoints are under the 200 ms p95 target. The slowest are order search `q` 
 deep pages sorted by customer name (~112 ms) and the 2-year top-products query (~88 ms).
 Everything else is under 66 ms.
 
-## Next: Milestone 3 (web)
-1. Next.js app (App Router, TS strict, Tailwind tokens, TanStack Query), Compose `web` service,
-   `/api` proxy to the API (D12)
-2. Login with "Try as Viewer / Manager" buttons; session-aware layout; role-aware UI
-3. Dashboard: KPI tiles with deltas, revenue trend, status breakdown, top products, date range
-4. Orders registry with URL-synced filters, order detail, draft editor, transition buttons,
-   409 handling (reload prompt)
-5. Customers, products (low-stock view), admin users and audit
-6. Loading/empty/error/forbidden states, 320px layout, a11y checklist; Vitest + Playwright
+## Done: Milestone 3 (web)
+- Next.js 16 app behind a Caddy edge (D13), same-origin `/api` proxy (D12), API types
+  generated from OpenAPI (D14)
+- Sign-in with one-click demo accounts; session-aware shell (sidebar, or a menu on phones);
+  role-aware navigation and actions; validated `next` redirect after sign-in
+- Dashboard: KPI tiles with period deltas (direction shown in text, not only color), revenue
+  trend (validated chart color, tooltip, table view), status breakdown, top products,
+  date ranges of complete UTC days (D16)
+- Orders: URL-synced filters (search, status, dates, customer), sort, pagination, cards on
+  phones, CSV export with readable errors, draft editor with customer/product search,
+  transitions with a cancel confirmation, stale-version and out-of-stock messages
+- Customers, products (edits send only changed fields, so stock isn't overwritten), admin
+  users (role, deactivation) and audit log
+- Every view: loading skeletons, empty and filtered-empty states, errors with retry,
+  forbidden notices
+- Tests: 51 Vitest (API client, open-redirect guard, date ranges, form rules, components
+  queried by role/label, login flows); 10 Playwright e2e on desktop and phone (320/412px)
+  with axe WCAG 2.2 AA checks (passed twice in a row); production stack smoke-tested
+- Bugs found by the checks and fixed: dev assets blocked for the `edge` host (no hydration
+  in e2e), success-badge contrast 4.47:1, grid blowout causing a 46px sideways scroll at
+  320px, URL-driven checkboxes snapping back (now optimistic), spoofable/shared client IP
+  for the rate limit (D13)
+- Checked by hand in the browser: login validation, dashboard (dark, and light at 375px), order
+  create → confirm (stock −3) → cancel (stock restored), dialog focus/Escape behaviour
+
+## Next: Milestone 4 (ship)
+1. Pick hosting (check current pricing). Keep D13: only the edge is public, and it
+   overwrites `X-Forwarded-For`
+2. Production secrets, `COOKIE_SECURE=true`, HTTPS, demo DB reset schedule
+3. Push to GitHub (needs the username), make CI green, add a CI badge
+4. Screenshots (dashboard, orders, editor, phone) and the Upwork portfolio entry
+5. Optional performance pass on order search `q`
 
 ## Known issues / notes
 - `make.ps1` is untested: PowerShell isn't installed on the dev Mac. Verify on Windows.
@@ -54,5 +77,5 @@ Everything else is under 66 ms.
   stock-adjustment endpoint (+/- delta) if the UI needs it.
 - Starlette warns that TestClient's `httpx` is deprecated in favour of `httpx2`. Harmless;
   revisit when upgrading.
-- Production deploy must set `FORWARDED_ALLOW_IPS` to the proxy, so the per-IP rate limit
-  sees real client IPs (M4).
+- Deployment must keep D13: api/web reachable only via a proxy that overwrites
+  `X-Forwarded-For`; otherwise the rate limit can be spoofed or turned into a global lockout.

@@ -1,0 +1,121 @@
+@import "tailwindcss";
+
+/*
+ * Design tokens. Components use only these (bg-surface, text-muted, border-line, ...),
+ * never raw colors, so light/dark and future rebrands change in one place.
+ * Text colors meet WCAG AA (>= 4.5:1) on surface, bg and their own *-soft background in each
+ * theme (axe checks this in e2e; success was darkened after it measured 4.47:1).
+ */
+:root {
+  color-scheme: light;
+  --c-bg: #f5f6f8;
+  --c-surface: #ffffff;
+  --c-surface-muted: #eef1f4;
+  --c-line: #dde2e8;
+  --c-line-strong: #b9c1ca;
+  --c-fg: #131820;
+  --c-muted: #556070;
+  --c-accent: #0b6b5d;
+  --c-accent-hover: #08574b;
+  --c-accent-soft: #e2f1ee;
+  --c-on-accent: #ffffff;
+  --c-focus: #0b57d0;
+  --c-danger: #b42318;
+  --c-danger-soft: #fdecea;
+  --c-success: #157033;
+  --c-success-soft: #e6f4ea;
+  --c-warning: #8a5300;
+  --c-warning-soft: #fff3d6;
+  --c-info: #1d4ed8;
+  --c-info-soft: #e8efff;
+  --c-neutral-soft: #eceff3;
+  /* Single chart series. Checked with the dataviz validator (lightness, chroma, >= 3:1 on surface). */
+  --c-chart-1: #2a78d6;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+    --c-bg: #0d1117;
+    --c-surface: #151b23;
+    --c-surface-muted: #1c242e;
+    --c-line: #2a333f;
+    --c-line-strong: #3d4856;
+    --c-fg: #e7eaef;
+    --c-muted: #9ba6b4;
+    --c-accent: #4cc9ae;
+    --c-accent-hover: #6fd6bf;
+    --c-accent-soft: #12332d;
+    --c-on-accent: #04221c;
+    --c-focus: #7aa7ff;
+    --c-danger: #ff8a80;
+    --c-danger-soft: #3a1714;
+    --c-success: #6fd08c;
+    --c-success-soft: #12301c;
+    --c-warning: #f0b955;
+    --c-warning-soft: #352710;
+    --c-info: #8fb2ff;
+    --c-info-soft: #172544;
+    --c-neutral-soft: #222b36;
+    --c-chart-1: #3987e5;
+  }
+}
+
+@theme inline {
+  --color-bg: var(--c-bg);
+  --color-surface: var(--c-surface);
+  --color-surface-muted: var(--c-surface-muted);
+  --color-line: var(--c-line);
+  --color-line-strong: var(--c-line-strong);
+  --color-fg: var(--c-fg);
+  --color-muted: var(--c-muted);
+  --color-accent: var(--c-accent);
+  --color-accent-hover: var(--c-accent-hover);
+  --color-accent-soft: var(--c-accent-soft);
+  --color-on-accent: var(--c-on-accent);
+  --color-focus: var(--c-focus);
+  --color-danger: var(--c-danger);
+  --color-danger-soft: var(--c-danger-soft);
+  --color-success: var(--c-success);
+  --color-success-soft: var(--c-success-soft);
+  --color-warning: var(--c-warning);
+  --color-warning-soft: var(--c-warning-soft);
+  --color-info: var(--c-info);
+  --color-info-soft: var(--c-info-soft);
+  --color-neutral-soft: var(--c-neutral-soft);
+  --color-chart-1: var(--c-chart-1);
+  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+  body {
+    @apply bg-bg text-fg font-sans antialiased;
+    font-variant-numeric: tabular-nums;
+  }
+  :focus-visible {
+    outline: 2px solid var(--c-focus);
+    outline-offset: 2px;
+  }
+  /* Inputs show focus via border+ring instead; keep the outline for everything else. */
+  input:focus-visible,
+  select:focus-visible,
+  textarea:focus-visible {
+    outline: none;
+    border-color: var(--c-focus);
+    box-shadow: 0 0 0 2px var(--c-focus);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

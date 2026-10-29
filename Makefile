@@ -1,25 +1,34 @@
 # Everything runs in Docker, so the only host requirements are Docker + make.
 # Windows: use make.ps1 with the same task names (./make.ps1 dev).
+# Dev: also loads docker-compose.override.yml (reload, bind mounts, test tools).
 COMPOSE := docker compose
-API := $(COMPOSE) run --rm api
+# Production-like images, no bind mounts.
+PROD := docker compose -f docker-compose.yml
+API := $(COMPOSE) run --rm --no-deps api
+WEB := $(COMPOSE) run --rm --no-deps web
 
 .DEFAULT_GOAL := help
-.PHONY: help setup dev run stop logs migrate seed reseed test lint format clean
+.PHONY: help setup web-install dev run stop logs migrate seed reseed test test-api test-web \
+	e2e lint lint-api lint-web format gen-api clean
 
 help: ## List tasks
-	@grep -E '^[a-z-]+:.*## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*## "}; {printf "  %-8s %s\n", $$1, $$2}'
+	@grep -E '^[a-z-]+:.*## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*## "}; {printf "  %-12s %s\n", $$1, $$2}'
 
 .env:
 	cp .env.example .env
 
-setup: .env ## Create .env and build images
+setup: .env ## Create .env, build images, install web deps
 	$(COMPOSE) build
+	$(MAKE) web-install
 
-dev: .env ## Start db + api with auto-reload (foreground)
+web-install: ## Install web dependencies (inside the container)
+	$(WEB) npm ci --no-audit --no-fund
+
+dev: .env ## Start db + api + web with reload (foreground) → http://localhost:3000
 	$(COMPOSE) up --build
 
-run: .env ## Start db + api in the background (prod image)
-	API_TARGET=prod $(COMPOSE) up --build -d
+run: .env ## Start the production-like stack in the background
+	$(PROD) up --build -d
 
 stop: ## Stop containers
 	$(COMPOSE) down
@@ -28,22 +37,38 @@ logs: ## Follow container logs
 	$(COMPOSE) logs -f
 
 migrate: .env ## Apply database migrations
-	$(API) alembic upgrade head
+	$(COMPOSE) run --rm api alembic upgrade head
 
 seed: .env migrate ## Load demo data (fails if data exists)
-	$(API) python -m app.seed
+	$(COMPOSE) run --rm api python -m app.seed
 
 reseed: .env migrate ## Replace all data with fresh demo data
-	$(API) python -m app.seed --reset
+	$(COMPOSE) run --rm api python -m app.seed --reset
 
-test: .env ## Run API tests against a real Postgres
-	$(API) pytest
+test: test-api test-web ## Run all unit/integration tests
 
-lint: .env ## Lint, format check, type check
+test-api: .env ## API tests against a real Postgres
+	$(COMPOSE) run --rm api pytest
+
+test-web: .env ## Web component tests (Vitest)
+	$(WEB) npm test
+
+e2e: .env ## Browser + accessibility tests on the full stack (needs `make seed` once)
+	$(COMPOSE) --profile e2e run --rm e2e
+
+lint: lint-api lint-web ## Lint + type check everything
+
+lint-api: .env
 	$(API) sh -c "ruff check . && ruff format --check . && mypy app tests"
 
-format: .env ## Auto-format and fix lint
+lint-web: .env
+	$(WEB) npm run lint
+
+format: .env ## Auto-format and fix lint (API)
 	$(API) sh -c "ruff format . && ruff check --fix ."
+
+gen-api: .env ## Regenerate web/src/lib/api-schema.ts from the running API
+	$(COMPOSE) run --rm web npm run gen:api
 
 clean: ## Stop containers and DELETE the database volume
 	$(COMPOSE) down -v

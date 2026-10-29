@@ -1,13 +1,28 @@
 # Architecture
 
-## Components (current: milestone 1)
+## Components
 ```
-docker compose
-├── db   postgres:17-alpine, volume pgdata, bound to 127.0.0.1 only
-└── api  FastAPI (Dockerfile targets: dev = reload + test tools; prod = runtime deps, non-root)
+browser ──► edge (Caddy, :3000 on the host) ──► web (Next.js) ──/api/*──► api (FastAPI) ──► db
+             sets X-Forwarded-For (D13)          same-origin rewrite (D12)   stateless       Postgres 17
 ```
-Planned: `web` (Next.js) in M3. The API stays stateless, so it can run as 2+ replicas behind
-a load balancer. Sessions use cookies, with no in-process state.
+- `docker-compose.yml` is production-like: prod images, no bind mounts, only `edge` (and the
+  API/DB on 127.0.0.1 for dev tools) published. `docker-compose.override.yml` (auto-loaded)
+  adds dev targets, bind mounts and the `e2e` Playwright service.
+- The API is stateless (sessions and rate limits live in Postgres), so it can run as 2+
+  replicas behind a load balancer.
+
+## Web app (`web/`)
+```
+src/app/            routes. (app)/ is the signed-in area (layout loads /auth/me)
+  login/            sign-in + demo buttons (DEMO_PASSWORD at runtime)
+src/components/ui/  design-system pieces: Button, Field, DataTable, Pagination, Notice, ...
+src/lib/api.ts      fetch wrapper → ApiError {status, code, message, fields}
+src/lib/queries.ts  every query key + hook; writes invalidate what they affect
+src/lib/api-schema.ts  generated from OpenAPI (D14), never edited by hand
+src/proxy.ts        UX redirect to /login when there's no session cookie (the API authorizes)
+```
+Design tokens live in `globals.css` (light + dark, AA contrast); components use token classes
+only. Tables become card lists below `md`, so phones never scroll sideways.
 
 ## Data model
 `users`, `customers`, `products`, `orders`, `order_items`, `audit_log`. The source of truth is

@@ -1,3 +1,5 @@
+# Production-like stack. `docker compose` also loads docker-compose.override.yml (dev:
+# reload, bind mounts, test tools); `make run` uses this file alone.
 services:
   db:
     image: postgres:17-alpine
@@ -16,24 +18,54 @@ services:
       retries: 30
 
   api:
-    # Tag per target, so `make run` (prod) never replaces the dev image used by test/lint.
-    image: opsboard-api:${API_TARGET:-dev}
+    image: opsboard-api:prod
     build:
       context: ./api
-      target: ${API_TARGET:-dev}
+      target: prod
     environment:
       DATABASE_URL: postgresql+psycopg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
       TEST_DATABASE_URL: postgresql+psycopg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}_test
       SEED_DEMO_PASSWORD: ${SEED_DEMO_PASSWORD}
       SEED_ADMIN_PASSWORD: ${SEED_ADMIN_PASSWORD}
       COOKIE_SECURE: ${COOKIE_SECURE:-true}
+      # Trust X-Forwarded-For from inside this network: it is set by the edge proxy (Caddy) from
+      # the real connection. web and api must never be reachable from outside except via edge.
+      FORWARDED_ALLOW_IPS: "*"
     ports:
       - "127.0.0.1:${API_PORT:-8000}:8000"
-    volumes:
-      - ./api:/app
     depends_on:
       db:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=2)"]
+      interval: 3s
+      timeout: 3s
+      retries: 30
+
+  web:
+    image: opsboard-web:prod
+    build:
+      context: ./web
+      target: prod
+      args:
+        API_URL: http://api:8000
+    environment:
+      API_URL: http://api:8000
+      # Shows one-click demo sign-in buttons. Leave empty outside the public demo.
+      DEMO_PASSWORD: ${DEMO_PASSWORD:-}
+    # No published port: browsers reach the app only through `edge`.
+    depends_on:
+      api:
+        condition: service_healthy
+
+  edge:
+    image: caddy:2.10.2-alpine
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+    ports:
+      - "127.0.0.1:${WEB_PORT:-3000}:80"
+    depends_on:
+      - web
 
 volumes:
   pgdata:

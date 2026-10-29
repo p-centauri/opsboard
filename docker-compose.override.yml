@@ -1,0 +1,33 @@
+# Dev overrides, loaded automatically by `docker compose`: reload, source bind mounts,
+# dev images with test and lint tools. Separate image tags keep dev and prod from
+# replacing each other.
+services:
+  api:
+    image: opsboard-api:dev
+    build:
+      target: dev
+    volumes:
+      - ./api:/app
+
+  web:
+    image: opsboard-web:dev
+    build:
+      target: dev
+    volumes:
+      # node_modules lives in the bind mount too; install it with `make web-install`
+      # (inside the container), so its native binaries are Linux ones.
+      - ./web:/app
+
+  # Browser tests: `make e2e` (needs a seeded database). Runs against the full stack via edge.
+  e2e:
+    image: mcr.microsoft.com/playwright:v1.64.1-noble
+    profiles: ["e2e"]
+    working_dir: /app
+    volumes:
+      - ./web:/app
+    environment:
+      BASE_URL: http://edge
+      DEMO_PASSWORD: ${DEMO_PASSWORD}
+    command: npx playwright test
+    depends_on:
+      - edge

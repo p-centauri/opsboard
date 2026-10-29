@@ -1,0 +1,8 @@
+# Edge proxy: the only public entry point (DECISIONS D13).
+# Caddy sets X-Forwarded-For from the TCP connection and does not trust a client-supplied
+# value (no trusted_proxies configured), so the API's per-IP login limit sees real client
+# addresses that can't be spoofed. Next.js passes the header on to the API unchanged.
+:80 {
+	encode zstd gzip
+	reverse_proxy web:3000
+}

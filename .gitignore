@@ -8,3 +8,8 @@ __pycache__/
 .ruff_cache/
 node_modules/
 .next/
+
+playwright-report/
+test-results/
+web/tsconfig.tsbuildinfo
+web/next-env.d.ts

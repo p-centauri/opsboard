@@ -1,7 +1,7 @@
 # OpsBoard: project map
 
-Portfolio demo: internal tool for orders/inventory/analytics. FastAPI + PostgreSQL now;
-Next.js web (M3) and Flutter (later) follow.
+Portfolio demo: internal tool for orders/inventory/analytics. Next.js web + FastAPI +
+PostgreSQL behind a Caddy edge. Flutter client later.
 
 **Resume ritual:** read `docs/PROGRESS.md` first, then the doc relevant to the task.
 
@@ -14,10 +14,14 @@ Next.js web (M3) and Flutter (later) follow.
 - `api/app/db.py`, `config.py`: engine with connect/statement timeouts; env settings (required, no defaults)
 - `api/alembic/versions/`: one migration per schema change; never edit an applied one
 - `api/tests/`: pytest on real Postgres (`TEST_DATABASE_URL`, recreated per session)
+- `web/src/app/(app)/`: signed-in pages; `web/src/components/ui/`: design-system components
+- `web/src/lib/queries.ts`: all query keys/hooks; `api.ts`: fetch + ApiError; `api-schema.ts`: generated
+- `web/e2e/`: Playwright + axe; `Caddyfile`: edge proxy (owns X-Forwarded-For, D13)
 - `docs/`: PLAN-summary, PLAN-detailed, ARCHITECTURE, DECISIONS, PROGRESS
 
 ## Commands (Docker only; Windows: `./make.ps1 <task>`)
-`make setup | dev | run | seed | reseed | migrate | test | lint | format | stop | clean`
+`make setup | dev | run | seed | reseed | migrate | test | e2e | lint | format | gen-api | stop | clean`
+Web deps install inside the container (`make web-install`); never `npm install` on the host.
 
 ## Conventions
 - Python 3.13, SQLAlchemy 2 typed ORM, sync engine (see DECISIONS).
@@ -33,4 +37,9 @@ Next.js web (M3) and Flutter (later) follow.
 - Tests: `client` gives one session per request on a savepoint (failed requests roll back);
   `login("manager")` signs in. Use `clean_db` only for tests that need real commits (races).
 - SQLAlchemy 2.1 typing: `Select[A, B]`, not `Select[tuple[A, B]]`.
+- Web: tokens only (bg-surface, text-muted, …), never raw colors. Every data view handles
+  loading/empty/error. Inputs go through `<Field>` (label, hint, error wiring). New API
+  fields → `make gen-api`. Filters belong in the URL (`useUrlState`).
+- Web tests: Vitest + Testing Library, querying by role/label; e2e specs run axe via
+  `expectAccessible(page)`.
 - Pin exact dependency versions in `api/requirements*.txt`; verify a package exists before adding it.
