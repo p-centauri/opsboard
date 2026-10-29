@@ -2,7 +2,7 @@
 
 Paste these into Upwork → Profile → Portfolio → **Add project**. Upwork shows a character
 counter on each field; check it as you paste, since limits can change.
-Fill in the two `[ADD: …]` links once the demo is live and the repo is public.
+Fill in the live-demo `[ADD: …]` link once the demo is deployed.
 
 ## Project title
 ```
@@ -26,7 +26,7 @@ Demo project: a production-ready internal tool for orders, inventory and analyti
 • Docker deployment with HTTPS
 
 Live demo: [ADD: live demo URL]
-Code: [ADD: GitHub URL]
+Code: https://github.com/p-centauri/opsboard
 ```
 
 ## Skills (pick the 5 Upwork allows, in this order)

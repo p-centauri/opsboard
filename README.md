@@ -1,5 +1,7 @@
 # OpsBoard
 
+[![CI](https://github.com/p-centauri/opsboard/actions/workflows/ci.yml/badge.svg)](https://github.com/p-centauri/opsboard/actions/workflows/ci.yml)
+
 An operations dashboard for orders, inventory and analytics: the kind of internal tool most
 businesses run on. It's built to production standards and seeded with 100k realistic orders,
 so performance is measured on real data volume, not a toy dataset.
